@@ -1,0 +1,64 @@
+
+library(shiny)
+library(ggplot2)
+
+ui <- fluidPage(
+  
+  titlePanel("The Exponential Family of Distributions"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("dist", "Select Distribution of Interest",
+                   choices = c("Normal", "Lognormal", "Gamma", "Exponential",
+                             "Poisson", "Binomial", "Negative Binomial", "Geometric")),
+      conditionalPanel(condition = 
+                         "input.dist == \"Lognormal\"", 
+                       numericInput("shapeN", "Select Shape Parameter", value=0)),
+      conditionalPanel(condition = 
+                         "input.dist == \"Normal\"", 
+                       numericInput("loc", "Select Location Parameter", value = 0)),
+      conditionalPanel(condition = 
+                         "input.dist == \"Gamma\"", 
+                       numericInput("shapeG", "Select Shape Parameter", min = 0, value = 1, step = 1)),
+      conditionalPanel(condition = 
+                         "input.dist == \"Normal\" | input.dist == \"Lognormal\"", 
+                       numericInput("scale", "Select Scale Parameter", min = 0, value = 1, step = 1)),
+      conditionalPanel(condition = 
+                         "input.dist == \"Gamma\" | input.dist == \"Exponential\" | input.dist == \"Poisson\"", 
+                       numericInput("rate", "Select Rate Parameter", min = 0, value=1, step = 0.5)),
+      conditionalPanel(condition = 
+                         "input.dist == \"Binomial\" | input.dist == \"Negative Binomial\"", 
+                       numericInput("size", "Select Size Parameter", min = 1, value = 1, step = 1)),
+      conditionalPanel(condition = 
+                         "input.dist == \"Binomial\" | input.dist == \"Negative Binomial\" | input.dist == \"Geometric\"", 
+                       numericInput("prob", "Select Probability Parameter", min = 0, max = 1, value = 0.5, step = 0.05))
+    ),
+    mainPanel(
+      plotOutput("distPlot")
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  distInput <- reactive({
+    switch (input$dist,
+      "Normal" = data.frame(distInput = rnorm(100000, input$loc, input$scale)),
+      "Lognormal" =data.frame(distInput = rlnorm(100000, input$shapeN, input$scale)),
+      "Gamma" = data.frame(distInput = rgamma(100000, input$shapeG, input$rate)),
+      "Exponential" = data.frame(distInput = rexp(100000, input$rate)),
+      "Poisson" = data.frame(distInput = rpois(100000, input$rate)),
+      "Binomial" = data.frame(distInput = rbinom(100000, input$size, input$prob)),
+      "Negative Binomial" = data.frame(distInput = rnbinom(100000, input$size, input$prob)),
+      "Geometric" = data.frame(distInput = rgeom(100000, input$prob))
+    )
+  })
+  output$distPlot <- renderPlot({
+    ggplot(distInput(), aes(distInput)) + 
+      geom_density(fill = 'lightblue', alpha = 0.3, kernel = "gaussian") +
+      theme(panel.background = element_rect(fill = 'gray99')) + 
+      labs(title = paste(input$dist, "Distribution"), x = "Probability")
+  })
+}
+
+shinyApp(ui = ui, server = server)
+
